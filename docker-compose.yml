@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      args:
+      # replace with your user and uid
+        user: rahman
+        uid: 1000
+      context: .
+      dockerfile: ./docker/Dockerfile
+    container_name: 'app'
+    ports:
+      - '8020:80'
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - ./docker/sites-enabled:/etc/apache2/sites-enabled
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/extra-php-config.ini
+      - ./docker/opcache.ini:/usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
+    networks:
+      - proxynet
+
+  maria-db:
+    image: mariadb:10.5.9
+    container_name: 'maria-db'
+    restart: unless-stopped
+    ports:
+      - '8040:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: 'secret'
+      MYSQL_USER: 'homestead'
+      MYSQL_PASSWORD: 'secret'
+      MYSQL_DATABASE: 'homestead'
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - proxynet
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: unless-stopped
+    depends_on:
+      - maria-db
+    environment:
+      ADMINER_DEFAULT_DB_DRIVER: mysql
+      ADMINER_DEFAULT_DB_HOST: mariadb
+      # ADMINER_DEFAULT_DB_NAME: homestead
+      # ADMINER_DEFAULT_SERVER: mariadb
+      ADMINER_DESIGN: nette
+      ADMINER_PLUGINS: tables-filter tinymce
+    ports:
+      - 8030:8080
+    networks:
+      - proxynet
+
+networks:
+  proxynet:
+    name: mynet
+    
+volumes:
+  db_data:
